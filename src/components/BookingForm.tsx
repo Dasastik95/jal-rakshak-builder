@@ -52,7 +52,8 @@ export const BookingForm = () => {
       const validated = bookingSchema.parse(formData);
       const newOrderId = generateOrderId();
 
-      const { error } = await supabase.from("bookings").insert({
+      // Submit to Supabase database
+      const { error: dbError } = await supabase.from("bookings").insert({
         order_id: newOrderId,
         full_name: validated.fullName,
         phone: validated.phone,
@@ -63,7 +64,27 @@ export const BookingForm = () => {
         terms_accepted: validated.termsAccepted,
       });
 
-      if (error) throw error;
+      if (dbError) throw dbError;
+
+      // Submit to web3forms for email notification
+      const formPayload = {
+        access_key: "f0f49770-37a1-4162-ba1b-2674bcbdce89",
+        name: validated.fullName,
+        phone: validated.phone,
+        address: validated.address,
+        quantity: validated.quantity,
+        pump_type: pumpTypeLabels[validated.pumpType as keyof typeof pumpTypeLabels],
+        referrer: validated.referrer || "None",
+        order_id: newOrderId,
+      };
+
+      await fetch("https://api.web3forms.com/submit", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formPayload),
+      });
 
       setOrderId(newOrderId);
       setShowSuccess(true);
@@ -230,10 +251,10 @@ export const BookingForm = () => {
             </div>
             <DialogTitle className="text-center text-2xl">Booking Confirmed!</DialogTitle>
             <DialogDescription className="text-center space-y-4">
-              <p className="text-lg">
+              <div className="text-lg">
                 Your Order ID: <span className="font-mono font-bold text-primary">{orderId}</span>
-              </p>
-              <p>Thank you! We will contact you on WhatsApp shortly to confirm installation details.</p>
+              </div>
+              <div>Thank you! We will contact you on WhatsApp shortly to confirm installation details.</div>
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 mt-4">
