@@ -2,11 +2,16 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Download, LogOut, Shield } from "lucide-react";
+import { Download, LogOut, Shield, RefreshCw, Eye, Edit } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 interface Booking {
@@ -29,6 +34,10 @@ const Admin = () => {
   const [password, setPassword] = useState("");
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const [editNotes, setEditNotes] = useState("");
+  const [isSignup, setIsSignup] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -73,17 +82,41 @@ const Admin = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      toast({
-        title: "Login Failed",
-        description: error.message,
-        variant: "destructive",
+    
+    if (isSignup) {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
       });
+
+      if (error) {
+        toast({
+          title: "Signup Failed",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Success!",
+          description: "Account created. You can now log in.",
+        });
+        setIsSignup(false);
+        setEmail("");
+        setPassword("");
+      }
+    } else {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        toast({
+          title: "Login Failed",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -110,6 +143,28 @@ const Admin = () => {
         description: "Status updated successfully",
       });
       fetchBookings();
+    }
+  };
+
+  const updateNotes = async (id: string, notes: string) => {
+    const { error } = await supabase
+      .from("bookings")
+      .update({ notes })
+      .eq("id", id);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update notes",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Success",
+        description: "Notes updated successfully",
+      });
+      fetchBookings();
+      setSelectedBooking(null);
     }
   };
 
@@ -149,6 +204,22 @@ const Admin = () => {
     return labels[type] || type;
   };
 
+  const getStatusBadgeVariant = (status: string) => {
+    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+      new: "default",
+      scheduled: "secondary",
+      installed: "outline",
+      warranty: "secondary",
+      closed: "outline",
+      doa: "destructive",
+    };
+    return variants[status] || "default";
+  };
+
+  const filteredBookings = filterStatus === "all" 
+    ? bookings 
+    : bookings.filter(b => b.status === filterStatus);
+
   if (!session) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-primary/5 to-background flex items-center justify-center p-4">
@@ -157,31 +228,54 @@ const Admin = () => {
             <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
               <Shield className="w-6 h-6 text-primary" />
             </div>
-            <CardTitle className="text-2xl">Admin Login</CardTitle>
-            <CardDescription>Enter your credentials to access the admin panel</CardDescription>
+            <CardTitle className="text-2xl">
+              {isSignup ? "Create Admin Account" : "Admin Login"}
+            </CardTitle>
+            <CardDescription>
+              {isSignup 
+                ? "Create a new admin account to manage bookings" 
+                : "Enter your credentials to access the admin panel"}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-4">
               <div>
+                <Label htmlFor="email">Email</Label>
                 <Input
+                  id="email"
                   type="email"
-                  placeholder="Email"
+                  placeholder="admin@jalrakshak.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
                 />
               </div>
               <div>
+                <Label htmlFor="password">Password</Label>
                 <Input
+                  id="password"
                   type="password"
-                  placeholder="Password"
+                  placeholder="Enter password (min 6 characters)"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  minLength={6}
                 />
               </div>
               <Button type="submit" className="w-full">
-                Login
+                {isSignup ? "Create Account" : "Login"}
+              </Button>
+              <Button 
+                type="button" 
+                variant="ghost" 
+                className="w-full"
+                onClick={() => {
+                  setIsSignup(!isSignup);
+                  setEmail("");
+                  setPassword("");
+                }}
+              >
+                {isSignup ? "Already have an account? Login" : "Need an account? Sign up"}
               </Button>
             </form>
           </CardContent>
@@ -208,25 +302,49 @@ const Admin = () => {
       </header>
 
       <div className="container mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
           <div>
             <h2 className="text-3xl font-bold">Bookings</h2>
-            <p className="text-muted-foreground">Total: {bookings.length} orders</p>
+            <p className="text-muted-foreground">
+              Showing {filteredBookings.length} of {bookings.length} orders
+            </p>
           </div>
-          <Button onClick={exportToCSV}>
-            <Download className="w-4 h-4 mr-2" />
-            Export CSV
-          </Button>
+          <div className="flex gap-2 flex-wrap">
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="new">New</SelectItem>
+                <SelectItem value="scheduled">Scheduled</SelectItem>
+                <SelectItem value="installed">Installed</SelectItem>
+                <SelectItem value="warranty">Warranty</SelectItem>
+                <SelectItem value="closed">Closed</SelectItem>
+                <SelectItem value="doa">DOA</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button variant="outline" onClick={fetchBookings}>
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Refresh
+            </Button>
+            <Button onClick={exportToCSV}>
+              <Download className="w-4 h-4 mr-2" />
+              Export CSV
+            </Button>
+          </div>
         </div>
 
         {loading ? (
           <div className="text-center py-12">
             <p className="text-muted-foreground">Loading bookings...</p>
           </div>
-        ) : bookings.length === 0 ? (
+        ) : filteredBookings.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center">
-              <p className="text-muted-foreground">No bookings yet</p>
+              <p className="text-muted-foreground">
+                {filterStatus === "all" ? "No bookings yet" : `No ${filterStatus} bookings`}
+              </p>
             </CardContent>
           </Card>
         ) : (
@@ -242,14 +360,24 @@ const Admin = () => {
                   <TableHead>Referrer</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {bookings.map((booking) => (
+                {filteredBookings.map((booking) => (
                   <TableRow key={booking.id}>
                     <TableCell className="font-mono text-sm">{booking.order_id}</TableCell>
                     <TableCell className="font-medium">{booking.full_name}</TableCell>
-                    <TableCell>{booking.phone}</TableCell>
+                    <TableCell>
+                      <a 
+                        href={`https://wa.me/91${booking.phone.replace(/[^0-9]/g, '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline"
+                      >
+                        {booking.phone}
+                      </a>
+                    </TableCell>
                     <TableCell>{getPumpTypeLabel(booking.pump_type)}</TableCell>
                     <TableCell>{booking.quantity}</TableCell>
                     <TableCell className="text-muted-foreground">
@@ -259,22 +387,113 @@ const Admin = () => {
                       {new Date(booking.created_at).toLocaleDateString()}
                     </TableCell>
                     <TableCell>
-                      <Select
-                        value={booking.status}
-                        onValueChange={(value) => updateStatus(booking.id, value)}
-                      >
-                        <SelectTrigger className="w-32">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="new">New</SelectItem>
-                          <SelectItem value="scheduled">Scheduled</SelectItem>
-                          <SelectItem value="installed">Installed</SelectItem>
-                          <SelectItem value="warranty">Warranty</SelectItem>
-                          <SelectItem value="closed">Closed</SelectItem>
-                          <SelectItem value="doa">DOA</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <Badge variant={getStatusBadgeVariant(booking.status)}>
+                        {booking.status.toUpperCase()}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => {
+                              setSelectedBooking(booking);
+                              setEditNotes(booking.notes || "");
+                            }}
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-2xl">
+                          <DialogHeader>
+                            <DialogTitle>Booking Details</DialogTitle>
+                            <DialogDescription>
+                              Order ID: {booking.order_id}
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <Label className="font-semibold">Customer Name</Label>
+                                <p>{booking.full_name}</p>
+                              </div>
+                              <div>
+                                <Label className="font-semibold">Phone</Label>
+                                <p>
+                                  <a 
+                                    href={`https://wa.me/91${booking.phone.replace(/[^0-9]/g, '')}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-primary hover:underline"
+                                  >
+                                    {booking.phone}
+                                  </a>
+                                </p>
+                              </div>
+                              <div className="col-span-2">
+                                <Label className="font-semibold">Address</Label>
+                                <p className="text-sm">{booking.address}</p>
+                              </div>
+                              <div>
+                                <Label className="font-semibold">Pump Type</Label>
+                                <p>{getPumpTypeLabel(booking.pump_type)}</p>
+                              </div>
+                              <div>
+                                <Label className="font-semibold">Quantity</Label>
+                                <p>{booking.quantity}</p>
+                              </div>
+                              <div>
+                                <Label className="font-semibold">Referrer</Label>
+                                <p>{booking.referrer || "Direct"}</p>
+                              </div>
+                              <div>
+                                <Label className="font-semibold">Date Ordered</Label>
+                                <p>{new Date(booking.created_at).toLocaleString()}</p>
+                              </div>
+                              <div className="col-span-2">
+                                <Label className="font-semibold">Status</Label>
+                                <Select
+                                  value={booking.status}
+                                  onValueChange={(value) => updateStatus(booking.id, value)}
+                                >
+                                  <SelectTrigger className="w-full mt-1">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="new">New</SelectItem>
+                                    <SelectItem value="scheduled">Scheduled</SelectItem>
+                                    <SelectItem value="installed">Installed</SelectItem>
+                                    <SelectItem value="warranty">Warranty</SelectItem>
+                                    <SelectItem value="closed">Closed</SelectItem>
+                                    <SelectItem value="doa">DOA</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="col-span-2">
+                                <Label htmlFor="notes" className="font-semibold">
+                                  Notes / Comments
+                                </Label>
+                                <Textarea
+                                  id="notes"
+                                  value={editNotes}
+                                  onChange={(e) => setEditNotes(e.target.value)}
+                                  placeholder="Add installation notes, warranty info, etc."
+                                  rows={4}
+                                  className="mt-1"
+                                />
+                                <Button 
+                                  className="mt-2" 
+                                  onClick={() => updateNotes(booking.id, editNotes)}
+                                >
+                                  <Edit className="w-4 h-4 mr-2" />
+                                  Save Notes
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
                     </TableCell>
                   </TableRow>
                 ))}
