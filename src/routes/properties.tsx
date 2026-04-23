@@ -1,14 +1,17 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { z } from "zod";
-import { Search, SlidersHorizontal, X, Plus } from "lucide-react";
+import { Search, SlidersHorizontal, X, Plus, Map as MapIcon, LayoutGrid } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PropertyCard, type PropertyCardData } from "@/components/site/PropertyCard";
+import { PropertyMap } from "@/components/site/PropertyMap";
 import { BUSINESS } from "@/config/business";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+
+type ListItem = PropertyCardData & { latitude?: number | null; longitude?: number | null };
 
 const propertiesSearchSchema = z.object({
   q: fallback(z.string(), "").default(""),
@@ -33,14 +36,15 @@ export const Route = createFileRoute("/properties")({
 function PropertiesPage() {
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
-  const [items, setItems] = useState<PropertyCardData[]>([]);
+  const [items, setItems] = useState<ListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [view, setView] = useState<"grid" | "map">("grid");
 
   useEffect(() => {
     setLoading(true);
     let q = supabase
       .from("properties")
-      .select("id,title,property_type,listing_type,price,city,locality,bedrooms,bathrooms,area_sqft,images,is_verified,is_featured,contact_phone,contact_whatsapp")
+      .select("id,title,property_type,listing_type,price,city,locality,bedrooms,bathrooms,area_sqft,images,is_verified,is_featured,contact_phone,contact_whatsapp,latitude,longitude")
       .eq("status", "active");
 
     if (search.type) q = q.eq("property_type", search.type);
@@ -54,7 +58,7 @@ function PropertiesPage() {
     else q = q.order("created_at", { ascending: false });
 
     q.limit(60).then(({ data }) => {
-      setItems((data ?? []) as PropertyCardData[]);
+      setItems((data ?? []) as ListItem[]);
       setLoading(false);
     });
   }, [search.q, search.type, search.listing, search.category, search.beds, search.sort]);
