@@ -1,14 +1,17 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { z } from "zod";
-import { Search, SlidersHorizontal, X, Plus } from "lucide-react";
+import { Search, SlidersHorizontal, X, Plus, Map as MapIcon, LayoutGrid } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PropertyCard, type PropertyCardData } from "@/components/site/PropertyCard";
+import { PropertyMap } from "@/components/site/PropertyMap";
 import { BUSINESS } from "@/config/business";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+
+type ListItem = PropertyCardData & { latitude?: number | null; longitude?: number | null };
 
 const propertiesSearchSchema = z.object({
   q: fallback(z.string(), "").default(""),
@@ -33,14 +36,15 @@ export const Route = createFileRoute("/properties")({
 function PropertiesPage() {
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
-  const [items, setItems] = useState<PropertyCardData[]>([]);
+  const [items, setItems] = useState<ListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [view, setView] = useState<"grid" | "map">("grid");
 
   useEffect(() => {
     setLoading(true);
     let q = supabase
       .from("properties")
-      .select("id,title,property_type,listing_type,price,city,locality,bedrooms,bathrooms,area_sqft,images,is_verified,is_featured,contact_phone,contact_whatsapp")
+      .select("id,title,property_type,listing_type,price,city,locality,bedrooms,bathrooms,area_sqft,images,is_verified,is_featured,contact_phone,contact_whatsapp,latitude,longitude")
       .eq("status", "active");
 
     if (search.type) q = q.eq("property_type", search.type);
@@ -54,7 +58,7 @@ function PropertiesPage() {
     else q = q.order("created_at", { ascending: false });
 
     q.limit(60).then(({ data }) => {
-      setItems((data ?? []) as PropertyCardData[]);
+      setItems((data ?? []) as ListItem[]);
       setLoading(false);
     });
   }, [search.q, search.type, search.listing, search.category, search.beds, search.sort]);
@@ -144,15 +148,25 @@ function PropertiesPage() {
                 </SelectContent>
               </Select>
             </div>
-            {hasFilters && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate({ search: { q: "", type: undefined, listing: undefined, beds: 0, sort: "newest", category: undefined } })}
-              >
-                <X className="h-4 w-4" /> Clear filters
-              </Button>
-            )}
+            <div className="flex items-center gap-2">
+              <div className="flex rounded-md border border-border p-0.5">
+                <button onClick={() => setView("grid")} className={`flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition ${view === "grid" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+                  <LayoutGrid className="h-3.5 w-3.5" /> Grid
+                </button>
+                <button onClick={() => setView("map")} className={`flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition ${view === "map" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+                  <MapIcon className="h-3.5 w-3.5" /> Map
+                </button>
+              </div>
+              {hasFilters && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate({ search: { q: "", type: undefined, listing: undefined, beds: 0, sort: "newest", category: undefined } })}
+                >
+                  <X className="h-4 w-4" /> Clear
+                </Button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -169,6 +183,8 @@ function PropertiesPage() {
               <Button asChild className="bg-orange text-orange-foreground hover:bg-orange/90"><Link to="/post-property"><Plus className="h-4 w-4" /> Post Property</Link></Button>
             </div>
           </div>
+        ) : view === "map" ? (
+          <PropertyMap properties={items} height={600} />
         ) : (
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {items.map((p) => <PropertyCard key={p.id} property={p} />)}
