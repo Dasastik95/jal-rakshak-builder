@@ -12,6 +12,7 @@ type Profile = {
   role: "buyer" | "seller" | "broker" | "admin";
   owner_type: "individual" | "broker" | null;
   city: string | null;
+  bio: string | null;
   onboarded: boolean;
   preferences: Record<string, unknown>;
 };
