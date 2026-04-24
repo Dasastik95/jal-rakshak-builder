@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as LoginIndexRouteImport } from './routes/login.index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as LoginVerifyMfaRouteImport } from './routes/login.verify-mfa'
 import { Route as LoginSignupRouteImport } from './routes/login.signup'
@@ -42,6 +43,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const LoginIndexRoute = LoginIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => LoginRoute,
 } as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/',
@@ -138,10 +144,10 @@ export interface FileRoutesByFullPath {
   '/login/signup': typeof LoginSignupRoute
   '/login/verify-mfa': typeof LoginVerifyMfaRoute
   '/admin/': typeof AdminIndexRoute
+  '/login/': typeof LoginIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/login': typeof LoginRouteWithChildren
   '/admin/audit-logs': typeof AdminAuditLogsRoute
   '/admin/chats': typeof AdminChatsRoute
   '/admin/locations': typeof AdminLocationsRoute
@@ -157,6 +163,7 @@ export interface FileRoutesByTo {
   '/login/signup': typeof LoginSignupRoute
   '/login/verify-mfa': typeof LoginVerifyMfaRoute
   '/admin': typeof AdminIndexRoute
+  '/login': typeof LoginIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -178,6 +185,7 @@ export interface FileRoutesById {
   '/login/signup': typeof LoginSignupRoute
   '/login/verify-mfa': typeof LoginVerifyMfaRoute
   '/admin/': typeof AdminIndexRoute
+  '/login/': typeof LoginIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -200,10 +208,10 @@ export interface FileRouteTypes {
     | '/login/signup'
     | '/login/verify-mfa'
     | '/admin/'
+    | '/login/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/login'
     | '/admin/audit-logs'
     | '/admin/chats'
     | '/admin/locations'
@@ -219,6 +227,7 @@ export interface FileRouteTypes {
     | '/login/signup'
     | '/login/verify-mfa'
     | '/admin'
+    | '/login'
   id:
     | '__root__'
     | '/'
@@ -239,6 +248,7 @@ export interface FileRouteTypes {
     | '/login/signup'
     | '/login/verify-mfa'
     | '/admin/'
+    | '/login/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -269,6 +279,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/login/': {
+      id: '/login/'
+      path: '/'
+      fullPath: '/login/'
+      preLoaderRoute: typeof LoginIndexRouteImport
+      parentRoute: typeof LoginRoute
     }
     '/admin/': {
       id: '/admin/'
@@ -415,11 +432,13 @@ const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 interface LoginRouteChildren {
   LoginSignupRoute: typeof LoginSignupRoute
   LoginVerifyMfaRoute: typeof LoginVerifyMfaRoute
+  LoginIndexRoute: typeof LoginIndexRoute
 }
 
 const LoginRouteChildren: LoginRouteChildren = {
   LoginSignupRoute: LoginSignupRoute,
   LoginVerifyMfaRoute: LoginVerifyMfaRoute,
+  LoginIndexRoute: LoginIndexRoute,
 }
 
 const LoginRouteWithChildren = LoginRoute._addFileChildren(LoginRouteChildren)
@@ -432,3 +451,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
