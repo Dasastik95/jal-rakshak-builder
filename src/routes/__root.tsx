@@ -1,20 +1,27 @@
-import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
+import {
+  Outlet,
+  Link,
+  HeadContent,
+  Scripts,
+  createRootRouteWithContext,
+} from "@tanstack/react-router";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { AuthProvider } from "@/lib/auth-context";
 
 import appCss from "../styles.css?url";
-import { Header } from "@/components/site/Header";
-import { Footer } from "@/components/site/Footer";
-import { WhatsAppButton } from "@/components/site/WhatsAppButton";
-import { BUSINESS } from "@/config/business";
-import { AuthProvider } from "@/lib/auth";
-import { Toaster } from "@/components/ui/sonner";
-import { OnboardingDialog } from "@/components/site/OnboardingDialog";
+
+interface RouterContext {
+  queryClient: QueryClient;
+}
 
 function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
-        <h1 className="font-display text-7xl font-bold text-foreground">404</h1>
-        <h2 className="mt-4 font-display text-xl font-semibold text-foreground">Page not found</h2>
+        <h1 className="text-7xl font-bold text-primary">404</h1>
+        <h2 className="mt-4 text-xl font-semibold text-foreground">Page not found</h2>
         <p className="mt-2 text-sm text-muted-foreground">
           The page you're looking for doesn't exist or has been moved.
         </p>
@@ -31,28 +38,24 @@ function NotFoundComponent() {
   );
 }
 
-export const Route = createRootRoute({
+export const Route = createRootRouteWithContext<RouterContext>()({
   head: () => ({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: `${BUSINESS.name} — ${BUSINESS.tagline}` },
+      { title: "Purulia Properties — Admin Panel" },
       {
         name: "description",
         content:
-          "Buy, sell, and rent residential and commercial properties in Purulia. Verified listings, trusted brokers, and a smarter way to find your next home.",
+          "Secure admin control center for Purulia Properties — manage users, listings, and platform activity.",
       },
-      { name: "author", content: BUSINESS.name },
-      { name: "twitter:card", content: "summary_large_image" },
-      { name: "theme-color", content: "#0e47a1" },
+      { name: "robots", content: "noindex, nofollow" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
-      { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap",
       },
     ],
   }),
@@ -76,18 +79,15 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 function RootComponent() {
+  const { queryClient } = Route.useRouteContext();
   return (
-    <AuthProvider>
-      <div className="flex min-h-screen flex-col">
-        <Header />
-        <main className="flex-1">
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <TooltipProvider>
           <Outlet />
-        </main>
-        <Footer />
-        <WhatsAppButton />
-        <OnboardingDialog />
-        <Toaster richColors position="top-center" />
-      </div>
-    </AuthProvider>
+          <Toaster richColors position="top-right" />
+        </TooltipProvider>
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }
