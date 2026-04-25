@@ -1,5 +1,5 @@
-import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,9 +19,11 @@ function VerifyMfaPage() {
   const [code, setCode] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  if (!auth.loading && !auth.session) {
-    throw redirect({ to: "/login" });
-  }
+  useEffect(() => {
+    if (!auth.loading && !auth.session) {
+      navigate({ to: "/login", replace: true });
+    }
+  }, [auth.loading, auth.session, navigate]);
 
   async function verify() {
     if (!auth.client || code.length !== 6) return;
