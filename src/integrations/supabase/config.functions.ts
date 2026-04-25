@@ -9,10 +9,10 @@ export const getSupabaseConfig = createServerFn({ method: "GET" }).handler(async
   // The admin panel reads/writes here so changes reflect on the live site.
   // Anon key is safe to expose — RLS + admin role checks enforce security.
   const url =
-    process.env.PURULIA_SUPABASE_URL ?? "https://bykgqrduwtmegxpreybp.supabase.co";
+    process.env.PURULIA_SUPABASE_URL ?? "https://sowjdkokhtrsboxjpvfz.supabase.co";
   const anonKey =
     process.env.PURULIA_SUPABASE_ANON_KEY ??
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ5a2dxcmR1d3RtZWd4cHJleWJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4NDAzNDMsImV4cCI6MjA5MjQxNjM0M30.pJZItYC7vIjW1bPwcWyT95wUmTitvl6pOChowFClp_M";
+    "sb_publishable_fwHe7I0nTYebSmRtkktJKA_E08A3jQA";
 
   if (!url || !anonKey) {
     return {
