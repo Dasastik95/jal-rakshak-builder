@@ -1,4 +1,5 @@
 import { createFileRoute, Outlet, Link, useLocation, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import {
   Sidebar,
@@ -197,6 +198,21 @@ function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  useEffect(() => {
+    if (auth.loading) return;
+    if (!auth.session) {
+      navigate({
+        to: "/login",
+        search: { redirect: location.pathname },
+        replace: true,
+      });
+      return;
+    }
+    if (auth.mfaRequired) {
+      navigate({ to: "/login/verify-mfa", replace: true });
+    }
+  }, [auth.loading, auth.session, auth.mfaRequired, navigate, location.pathname]);
+
   if (auth.loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -220,16 +236,10 @@ function AdminLayout() {
   }
 
   if (!auth.session) {
-    navigate({
-      to: "/login",
-      search: { redirect: location.pathname },
-      replace: true,
-    });
     return null;
   }
 
   if (auth.mfaRequired) {
-    navigate({ to: "/login/verify-mfa", replace: true });
     return null;
   }
 
