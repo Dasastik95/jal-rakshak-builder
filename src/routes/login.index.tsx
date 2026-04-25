@@ -1,5 +1,5 @@
-import { createFileRoute, useNavigate, redirect, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { z } from "zod";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
@@ -38,12 +38,18 @@ function LoginPage() {
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  if (!auth.loading && auth.session && auth.isAdmin && !auth.mfaRequired) {
-    throw redirect({ to: search.redirect ?? "/admin" });
-  }
-  if (!auth.loading && auth.session && auth.mfaRequired) {
-    throw redirect({ to: "/login/verify-mfa" });
-  }
+  useEffect(() => {
+    if (auth.loading || !auth.session) return;
+
+    if (auth.mfaRequired) {
+      navigate({ to: "/login/verify-mfa", replace: true });
+      return;
+    }
+
+    if (auth.isAdmin) {
+      navigate({ to: search.redirect ?? "/admin", replace: true });
+    }
+  }, [auth.loading, auth.session, auth.isAdmin, auth.mfaRequired, navigate, search.redirect]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
